@@ -219,14 +219,6 @@ std::optional<uint16_t> parseSubscribePort(const std::string_view json) {
 
 MV3DEditorBridge::MV3DEditorBridge(Logger &logger) :
 	logger(logger) {
-	enabled = g_configManager().getBoolean(MV3D_EDITOR_BRIDGE_ENABLED);
-	mapEditMode = g_configManager().getBoolean(MV3D_EDITOR_BRIDGE_MAP_EDIT_MODE);
-	playerOperationMode = g_configManager().getBoolean(MV3D_EDITOR_BRIDGE_PLAYER_OPERATION_MODE);
-
-	if (const char* disabled = std::getenv("MV3D_EDITOR_BRIDGE_DISABLED")) {
-		enabled = std::string_view(disabled) != "1";
-	}
-
 	if (const char* customPort = std::getenv("MV3D_EDITOR_BRIDGE_PORT")) {
 		const auto parsed = std::atoi(customPort);
 		if (parsed > 0 && parsed <= 65535) {
@@ -239,10 +231,6 @@ MV3DEditorBridge::MV3DEditorBridge(Logger &logger) :
 		if (parsed <= std::numeric_limits<uint32_t>::max()) {
 			mv3dPlayerId = static_cast<uint32_t>(parsed);
 		}
-	}
-
-	if (!playerOperationMode) {
-		mv3dPlayerId = 0;
 	}
 
 	if (const char* customUtpPort = std::getenv("MV3D_UTP_PORT")) {
@@ -305,6 +293,18 @@ bool MV3DEditorBridge::isPlayerOperationOpcode(const uint8_t opcode) const {
 }
 
 void MV3DEditorBridge::start() {
+	enabled = g_configManager().getBoolean(MV3D_EDITOR_BRIDGE_ENABLED);
+	mapEditMode = g_configManager().getBoolean(MV3D_EDITOR_BRIDGE_MAP_EDIT_MODE);
+	playerOperationMode = g_configManager().getBoolean(MV3D_EDITOR_BRIDGE_PLAYER_OPERATION_MODE);
+
+	if (const char* disabled = std::getenv("MV3D_EDITOR_BRIDGE_DISABLED")) {
+		enabled = std::string_view(disabled) != "1";
+	}
+
+	if (!playerOperationMode) {
+		mv3dPlayerId = 0;
+	}
+
 	if (!enabled || running.exchange(true)) {
 		return;
 	}
