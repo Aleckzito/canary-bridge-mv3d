@@ -63,6 +63,10 @@ coexistence limits and standalone codec test instructions are documented in
 The regular Tibia protocol and older bridge snapshot packet formats are unchanged.
 The sector extension requires a matching client parser and live integration tests.
 
+The preliminary bridge source release and local integration evidence are
+described in [RELEASE_BRIDGE_0.1.0.md](docs/RELEASE_BRIDGE_0.1.0.md).
+The SDL2 client is excluded and remains under testing.
+
 Run the standalone wire codec tests without a server or SDL2:
 
 ```powershell

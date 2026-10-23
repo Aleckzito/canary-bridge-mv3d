@@ -64,7 +64,10 @@ Both clients still share Canary's world and dispatcher. Editor/gameplay commands
 can affect other players. Like existing bridge writes, sector writes are
 synchronous under the shared socket mutex; a stalled client can delay server work.
 This patch is for bounded local experiments, not a claim of production isolation.
-The SDL2 client and simultaneous live client behavior have not been validated.
+Simultaneous behavior with a regular Tibia client has not been validated.
+Local integration evidence and its limits are recorded in
+[RELEASE_BRIDGE_0.1.0.md](RELEASE_BRIDGE_0.1.0.md). The experimental test client
+is not part of this release.
 
 ## Validation
 
@@ -83,3 +86,8 @@ checkout with its build dependencies and data; they are not supplied by this ove
 For this patch, the bridge translation unit also passed an MSVC `/Zs` syntax check
 using headers and vcpkg dependencies from the local full Canary checkout. This
 checks compilation of the changed code, but does not link or run the server.
+
+Subsequent integration checks compiled the bridge in a complete local Canary
+checkout and exercised the sector protocol over a live RSA handshake. See the
+release validation record linked above; the complete server tree and test
+client remain separate from this overlay.
