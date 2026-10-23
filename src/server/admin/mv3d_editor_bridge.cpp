@@ -27,6 +27,7 @@
 #include "game/scheduling/dispatcher.hpp"
 #include "items/item.hpp"
 #include "lib/logging/logger.hpp"
+#include "map/map_const.hpp"
 #include "security/rsa.hpp"
 #include "server/admin/mv3d_utp_event_builder.hpp"
 
@@ -264,6 +265,7 @@ bool MV3DEditorBridge::isMapEditOpcode(const uint8_t opcode) const {
 		case C2S_MAP_EDIT_PAINT:
 		case C2S_MAP_EDIT_ERASE:
 		case C2S_MAP_SYNC_REQUEST:
+		case C2S_SECTOR_SUBSCRIBE:
 		case C2S_ERASE_BY_STACK:
 		case C2S_MAP_SAVE_REQUEST:
 		case C2S_ITEM_UPDATE_METADATA:
@@ -925,13 +927,22 @@ void MV3DEditorBridge::handleClient(std::shared_ptr<asio::ip::tcp::socket> clien
 				if (!ec) {
 					handleListenerUpdatePacket(client, payload);
 				}
+			} else if (opcode == C2S_SECTOR_SUBSCRIBE) {
+				std::array<uint8_t, mv3d::sector::REQUEST_BYTES> payload {};
+				asio::read(*client, asio::buffer(payload), ec);
+				if (ec) break;
+				handleSectorSubscribePacket(client, payload);
 			} else {
-				logger.warn("MV3D editor bridge ignored opcode 0x{:02X}", static_cast<int>(opcode));
+				// Unknown payload lengths cannot be skipped safely on a TCP byte stream.
+				logger.warn("MV3D editor bridge closing client on unknown opcode 0x{:02X}", static_cast<int>(opcode));
+				break;
 			}
 		}
 
 		{
 			std::scoped_lock lock(socketMutex);
+			asio::error_code closeEc;
+			client->close(closeEc);
 			socketToUserId.erase(client);
 			clients.erase(std::remove(clients.begin(), clients.end(), client), clients.end());
 		}
@@ -1235,6 +1246,63 @@ void MV3DEditorBridge::applySyncRequest(const std::weak_ptr<asio::ip::tcp::socke
 	// UTP chunk — mismos tiles mirrored a todos los suscriptores UDP.
 	// playerX/Y/Z: usamos el centro del sync como aproximación (mejora: lookup por socket).
 	broadcastChunk(entries, request, request.x, request.y, request.z);
+}
+
+void MV3DEditorBridge::handleSectorSubscribePacket(const std::shared_ptr<asio::ip::tcp::socket> &client, const std::array<uint8_t, mv3d::sector::REQUEST_BYTES> &payload) {
+	const auto request = mv3d::sector::decode(payload);
+	g_dispatcher().addEvent(
+		[this, weakClient = std::weak_ptr<asio::ip::tcp::socket>(client), request] {
+			applySectorSubscribe(weakClient, request);
+		},
+		"MV3DEditorBridge::applySectorSubscribe"
+	);
+}
+
+void MV3DEditorBridge::applySectorSubscribe(const std::weak_ptr<asio::ip::tcp::socket> &weakClient, mv3d::sector::Request request) {
+	const auto client = weakClient.lock();
+	if (!client || !running || !mapEditMode) return;
+
+	std::vector<mv3d::sector::Entry> entries;
+	uint8_t status = request.z < MAP_MAX_LAYERS ? 0 : 2;
+	if (status == 0) {
+		const auto radius = mv3d::sector::radius(request);
+		const int32_t minX = std::max<int32_t>(0, int32_t(request.x) - radius);
+		const int32_t maxX = std::min<int32_t>(65535, int32_t(request.x) + radius);
+		const int32_t minY = std::max<int32_t>(0, int32_t(request.y) - radius);
+		const int32_t maxY = std::min<int32_t>(65535, int32_t(request.y) + radius);
+		for (int32_t x = minX; x <= maxX && status == 0; ++x) {
+			for (int32_t y = minY; y <= maxY && status == 0; ++y) {
+				const auto tile = g_game().map.getTile(Position(uint16_t(x), uint16_t(y), request.z));
+				if (!tile) continue;
+				const auto appendItem = [&](const auto &item) {
+					if (!item || item->getID() == 0) return;
+					if (entries.size() == mv3d::sector::MAX_ENTRIES) {
+						status = 1;
+						return;
+					}
+					entries.push_back({ uint16_t(x), uint16_t(y), request.z, item->getID() });
+				};
+				appendItem(tile->getGround());
+				if (const auto *items = tile->getItemList()) {
+					for (const auto &item : *items) {
+						appendItem(item);
+						if (status != 0) break;
+					}
+				}
+			}
+		}
+	}
+
+	const auto bytes = mv3d::sector::encode(request, entries, status);
+	// Match the bridge's existing write lock; never expose partial packet writes.
+	std::scoped_lock lock(socketMutex);
+	if (!client->is_open()) return;
+	asio::error_code ec;
+	asio::write(*client, asio::buffer(bytes), ec);
+	if (ec) {
+		logger.warn("MV3D sector send failed: {}", ec.message());
+		client->close(ec);
+	}
 }
 
 void MV3DEditorBridge::applyEraseCommand(const std::weak_ptr<asio::ip::tcp::socket> &client, const EraseCommand command) {
