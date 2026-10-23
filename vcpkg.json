@@ -1,0 +1,43 @@
+{
+  "name": "canary",
+  "version-string": "1.0.0",
+  "dependencies": [
+    "abseil",
+    "argon2",
+    "asio",
+    "bext-di",
+    "bext-ut",
+    "curl",
+    "eventpp",
+    "gtest",
+    "libmariadb",
+    "luajit",
+    "magic-enum",
+    "mio",
+    "parallel-hashmap",
+    "protobuf",
+    "pugixml",
+    "spdlog",
+    "zlib",
+    "bshoshany-thread-pool",
+    "atomic-queue",
+    "nlohmann-json",
+    "openssl"
+  ],
+  "features": {
+    "metrics": {
+      "description": "Enable OpenTelemetry metrics exporters",
+      "dependencies": [
+        {
+          "name": "opentelemetry-cpp",
+          "default-features": true,
+          "features": [
+            "otlp-http",
+            "prometheus"
+          ]
+        }
+      ]
+    }
+  },
+  "builtin-baseline": "66c0373dc7fca549e5803087b9487edfe3aca0a1"
+}
