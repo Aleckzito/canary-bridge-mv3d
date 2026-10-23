@@ -3,7 +3,20 @@
 ## Estado actual
 El bridge maneja correctamente 0x90-0x9A (editor de mapas) y tiene los **cimientos completos**
 para 0xB0-0xBC (gameplay). Los handlers parsean, logean y despachan al main thread.
-Lo que falta es conectar los `apply*` y `broadcast*` a los sistemas reales de Canary.
+Los hooks de gameplay listados abajo ya tienen integraciones; cada uno requiere
+validación en ejecución antes de considerar completo el cliente.
+
+## Sector streaming 0xA5–0xA8
+
+- `0xA5` consume exactamente 7 bytes de payload y despacha la lectura al dispatcher.
+- Conserva el permiso `mv3dBridgeMapEditMode` usado por snapshots anteriores.
+- Respuesta: `0xA6` **26 bytes**, `0xA7` **15 + payloadLen bytes** (máximo
+  **197 entradas**), `0xA8` **11 bytes**. Todos incluyen el opcode.
+- Los opcodes desconocidos cierran la conexión para evitar desincronización TCP.
+- Pruebas del codec: `tests/mv3d_sector_protocol_test.cpp`.
+- Contrato completo y limitaciones: [MV3D_SECTOR_PROTOCOL.md](../../../docs/MV3D_SECTOR_PROTOCOL.md).
+- Pendiente: compilar en Canary completo, probar handshake y ambos clientes,
+  y localizar/validar el parser SDL2. Las pruebas del codec no certifican gameplay.
 
 ---
 

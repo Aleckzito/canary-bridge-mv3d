@@ -51,10 +51,27 @@ mv3dBridgeMapEditMode = true
 
 ## Build
 
-Windows RelWithDebInfo build tested with:
+This repository contains a source overlay, not the full Canary build tree. Apply
+the overlay to a compatible complete Canary checkout before configuring/building
+the server with its dependencies. Existing local build directories may contain
+absolute paths from another machine and must be reconfigured.
+
+Sector streaming (`0xA5`–`0xA8`), the exact packet layout, permissions, client
+coexistence limits and standalone codec test instructions are documented in
+[MV3D_SECTOR_PROTOCOL.md](docs/MV3D_SECTOR_PROTOCOL.md).
+
+The regular Tibia protocol and older bridge snapshot packet formats are unchanged.
+The sector extension requires a matching client parser and live integration tests.
+
+The preliminary bridge source release and local integration evidence are
+described in [RELEASE_BRIDGE_0.1.0.md](docs/RELEASE_BRIDGE_0.1.0.md).
+The SDL2 client is excluded and remains under testing.
+
+Run the standalone wire codec tests without a server or SDL2:
 
 ```powershell
-cmake --build "G:\Canary 3D\opentibiabr_repos\canary\build" --config RelWithDebInfo --target canary
+g++ -std=c++17 -Wall -Wextra -Werror -I src tests/mv3d_sector_protocol_test.cpp -o sector-test.exe
+.\sector-test.exe
 ```
 
 ## External Contributions

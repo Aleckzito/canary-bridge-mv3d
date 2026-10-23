@@ -39,6 +39,7 @@
 #include <vector>
 
 #include <asio.hpp>
+#include "server/admin/mv3d_sector_protocol.hpp"
 
 class Logger;
 
@@ -308,6 +309,8 @@ private:
 	void handleErasePacket(const std::shared_ptr<asio::ip::tcp::socket> &client, const std::array<uint8_t, ERASE_PAYLOAD_SIZE> &payload);
 	void handleEraseByStackPacket(const std::shared_ptr<asio::ip::tcp::socket> &client, const std::array<uint8_t, ERASE_BY_STACK_PAYLOAD_SIZE> &payload);
 	void handleSyncRequestPacket(const std::shared_ptr<asio::ip::tcp::socket> &client, const std::array<uint8_t, SYNC_REQUEST_PAYLOAD_SIZE> &payload);
+	void handleSectorSubscribePacket(const std::shared_ptr<asio::ip::tcp::socket> &client, const std::array<uint8_t, mv3d::sector::REQUEST_BYTES> &payload);
+	void applySectorSubscribe(const std::weak_ptr<asio::ip::tcp::socket> &client, mv3d::sector::Request request);
 	void handleMetadataUpdatePacket(const std::shared_ptr<asio::ip::tcp::socket> &client, const std::array<uint8_t, METADATA_PAYLOAD_SIZE> &payload);
 	void handleTextUpdatePacket(const std::shared_ptr<asio::ip::tcp::socket> &client, TextUpdateCommand command);
 	void handleSaveRequestPacket(const std::shared_ptr<asio::ip::tcp::socket> &client);
